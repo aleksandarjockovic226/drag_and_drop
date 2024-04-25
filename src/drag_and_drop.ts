@@ -1,52 +1,76 @@
-(function () {
-    const dragAndSortHolders: NodeListOf<HTMLElement> = document.querySelectorAll('[drag_and_sort=true]')
-    if (!dragAndSortHolders) {
+interface InitDragAndDrop {
+    wrapperId: string;
+    type: "sort" | "clone";
+    afterDragstartCallback?: () => void;
+    afterDragendCallback?: () => void;
+    afterDragoverCallback?: () => void;
+}
+
+interface InitDragAndSort extends InitDragAndDrop {
+    type: "sort";
+    sortableContainerId: string;
+}
+
+interface InitDragAndClone extends InitDragAndDrop {
+    type: "clone";
+    cloneFromContainerId: string,
+    cloneToContainerId: string,
+    sortableTargetContainer?: true
+}
+
+function initDragAndSort(options: InitDragAndSort) {
+    const holder: HTMLElement = document.querySelector(`#${options.wrapperId}`) as HTMLElement;
+
+    if (!holder) {
         return;
     }
 
-    dragAndSortHolders.forEach((holder) => {
-        holder.addEventListener('dragstart', (event) => {
-            dragstartHandle(event, holder);
-        });
-        holder.addEventListener('dragend', (event) => {
-            dragendHandle(event, holder);
-        });
-        holder.addEventListener('dragover', (event) => {
-            dragoverHandle(event, holder);
-        });
+    holder.addEventListener('dragstart', (event) => {
+        dragstartHandle(event, holder);
+        options?.afterDragstartCallback?.();
     });
+    holder.addEventListener('dragend', (event) => {
+        dragendHandle(event, holder);
+        options?.afterDragendCallback?.();
+    });
+    holder.addEventListener('dragover', (event) => {
+        dragoverHandle(event, holder, options.sortableContainerId);
+        options?.afterDragoverCallback?.();
+    });
+}
 
-})();
+function initDragAndClone(options: InitDragAndClone) {
+    const holder: HTMLElement = document.querySelector(`#${options.wrapperId}`) as HTMLElement;
 
-(function () {
-    const dragAndCloneHolders: NodeListOf<HTMLElement> = document.querySelectorAll('[drag_and_clone=true]')
-    if (!dragAndCloneHolders) {
+    if (!holder) {
         return;
     }
 
-    dragAndCloneHolders.forEach((holder) => {
-        let draggableClone: HTMLElement;
+    let draggableClone: HTMLElement;
 
-        holder.addEventListener('dragstart', (event) => {
-            dragstartHandle(event, holder);
+    holder.addEventListener('dragstart', (event) => {
+        dragstartHandle(event, holder);
 
-            const target = event.target as HTMLElement;
-            draggableClone = target.cloneNode(true) as HTMLElement;
-            draggableClone.classList.add('dragging');
-            draggableClone.style.display = "none";
-        });
-        holder.addEventListener('dragend', (event) => {
-            dragendHandle(event, holder);
-        });
-        holder.addEventListener('dragover', (event) => {
-            dragoverHandle(event, holder, draggableClone);
+        const target = event.target as HTMLElement;
+        draggableClone = target.cloneNode(true) as HTMLElement;
+        draggableClone.classList.add('dragging');
+        draggableClone.style.display = "none";
 
-            draggableClone.classList.remove('dragging');
-            draggableClone.removeAttribute("style");
-        });
+        options?.afterDragstartCallback?.();
     });
+    holder.addEventListener('dragend', (event) => {
+        dragendHandle(event, holder);
+        options?.afterDragendCallback?.();
+    });
+    holder.addEventListener('dragover', (event) => {
+        dragoverHandle(event, holder, options.cloneToContainerId, draggableClone);
 
-})();
+        draggableClone.classList.remove('dragging');
+        draggableClone.removeAttribute("style");
+
+        options?.afterDragoverCallback?.();
+    });
+}
 
 function getDragAfterElement(container: HTMLElement, y: number) {
     const draggableElements = Array.from(container.querySelectorAll<HTMLElement>('[draggable=true]:not(.dragging)'));
@@ -81,10 +105,10 @@ function dragendHandle(event: DragEvent, holder: HTMLElement) {
     target.classList.remove('dragging');
 }
 
-function dragoverHandle(event: DragEvent, holder: HTMLElement, cloneElement?: HTMLElement) {
+function dragoverHandle(event: DragEvent, holder: HTMLElement, containerId: string, cloneElement?: HTMLElement) {
     event.preventDefault();
     const target = event.target as HTMLElement;
-    if (!target || target.getAttribute('container') !== 'true') {
+    if (!target || target.id !== containerId || target.contains(holder)) {
         return;
     }
 
@@ -98,3 +122,20 @@ function dragoverHandle(event: DragEvent, holder: HTMLElement, cloneElement?: HT
         target.insertBefore(draggable!, afterElement);
     }
 }
+
+const sortOptions: InitDragAndSort = {
+    wrapperId: "wrapper",
+    type: "sort",
+    sortableContainerId: "container",
+};
+
+const cloneOptions: InitDragAndClone = {
+    wrapperId: "wrapper",
+    type: "clone",
+    cloneFromContainerId: "fromContainer",
+    cloneToContainerId: "container",
+    sortableTargetContainer: true,
+};
+
+// initDragAndSort(sortOptions);
+// initDragAndClone(cloneOptions);
