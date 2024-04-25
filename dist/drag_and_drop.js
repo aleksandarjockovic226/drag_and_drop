@@ -1,95 +1,143 @@
 "use strict";
-function initDragAndSort(options) {
-    const holder = document.querySelector(`#${options.wrapperId}`);
-    if (!holder) {
-        return;
+function initDragAndDrop(options) {
+    if (!options.type) {
+        throw new Error("Drag And Drop: property 'type' not specified!");
     }
-    holder.addEventListener('dragstart', (event) => {
-        var _a;
-        dragstartHandle(event, holder);
-        (_a = options === null || options === void 0 ? void 0 : options.afterDragstartCallback) === null || _a === void 0 ? void 0 : _a.call(options);
-    });
-    holder.addEventListener('dragend', (event) => {
-        var _a;
-        dragendHandle(event, holder);
-        (_a = options === null || options === void 0 ? void 0 : options.afterDragendCallback) === null || _a === void 0 ? void 0 : _a.call(options);
-    });
-    holder.addEventListener('dragover', (event) => {
-        var _a;
-        dragoverHandle(event, holder, options.sortableContainerId);
-        (_a = options === null || options === void 0 ? void 0 : options.afterDragoverCallback) === null || _a === void 0 ? void 0 : _a.call(options);
-    });
-}
-function initDragAndClone(options) {
-    const holder = document.querySelector(`#${options.wrapperId}`);
-    if (!holder) {
-        return;
+    if (!options.wrapperId || options.wrapperId == "") {
+        throw new Error("Drag And Drop: property 'wrapperId' not specified!");
     }
-    let draggableClone;
-    holder.addEventListener('dragstart', (event) => {
+    const initDragAndSort = (options) => {
+        const holder = document.querySelector(`#${options.wrapperId}`);
+        if (!holder) {
+            throw new Error(`Drag And Drop: Element with id '${options.wrapperId}' was not found when initializing 'Drag And Sort'!`);
+        }
+        holder.addEventListener('dragstart', (event) => {
+            var _a;
+            dragstartHandle(event, holder, options);
+            (_a = options === null || options === void 0 ? void 0 : options.afterDragstartCallback) === null || _a === void 0 ? void 0 : _a.call(options);
+        });
+        holder.addEventListener('dragend', (event) => {
+            var _a;
+            dragendHandle(event, holder);
+            (_a = options === null || options === void 0 ? void 0 : options.afterDragendCallback) === null || _a === void 0 ? void 0 : _a.call(options);
+        });
+        holder.addEventListener('dragover', (event) => {
+            var _a;
+            dragoverHandle(event, holder, options);
+            (_a = options === null || options === void 0 ? void 0 : options.afterDragoverCallback) === null || _a === void 0 ? void 0 : _a.call(options);
+        });
+    };
+    const initDragAndClone = (options) => {
+        const holder = document.querySelector(`#${options.wrapperId}`);
+        if (!holder) {
+            throw new Error(`Drag And Drop: Element with id '${options.wrapperId}' was not found when initializing 'Drag And Clone'!`);
+        }
+        let draggableClone;
+        holder.addEventListener('dragstart', (event) => {
+            var _a;
+            const target = event.target;
+            dragstartHandle(event, holder, options);
+            if (target.parentElement && target.parentElement.id == options.cloneFromContainerId) {
+                draggableClone = target.cloneNode(true);
+                // TODO: sortableTargetContainer: false, fix for cloned elements!
+                draggableClone.classList.add('dragging');
+                draggableClone.style.display = "none";
+            }
+            (_a = options === null || options === void 0 ? void 0 : options.afterDragstartCallback) === null || _a === void 0 ? void 0 : _a.call(options);
+        });
+        holder.addEventListener('dragend', (event) => {
+            var _a;
+            dragendHandle(event, holder);
+            (_a = options === null || options === void 0 ? void 0 : options.afterDragendCallback) === null || _a === void 0 ? void 0 : _a.call(options);
+        });
+        holder.addEventListener('dragover', (event) => {
+            var _a;
+            if (!draggableClone) {
+                return;
+            }
+            dragoverHandle(event, holder, options, draggableClone);
+            draggableClone.classList.remove('dragging');
+            draggableClone.removeAttribute("style");
+            (_a = options === null || options === void 0 ? void 0 : options.afterDragoverCallback) === null || _a === void 0 ? void 0 : _a.call(options);
+        });
+    };
+    switch (options.type.toLocaleLowerCase()) {
+        case "sort":
+            options = options;
+            if (!options.sortableContainerId) {
+                throw new Error("Drag And Drop: property 'sortableContainerId' not specified!");
+            }
+            initDragAndSort(options);
+            break;
+        case "clone":
+            options = options;
+            if (!options.cloneFromContainerId) {
+                throw new Error("Drag And Drop: property 'cloneFromContainerId' not specified!");
+            }
+            if (!options.cloneToContainerId) {
+                throw new Error("Drag And Drop: property 'cloneToContainerId' not specified!");
+            }
+            if (!options.sortableTargetContainer) {
+                options.sortableTargetContainer = true;
+            }
+            initDragAndClone(options);
+            break;
+        default:
+            throw new Error("Drag And Drop: Unsupported type!");
+    }
+    const getDragAfterElement = (container, y) => {
         var _a;
-        dragstartHandle(event, holder);
+        const draggableElements = Array.from(container.querySelectorAll('[draggable=true]:not(.dragging)'));
+        return (_a = draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > (closest ? closest.offset : Number.NEGATIVE_INFINITY)) {
+                return { offset: offset, element: child };
+            }
+            else {
+                return closest;
+            }
+        }, null)) === null || _a === void 0 ? void 0 : _a.element;
+    };
+    const dragstartHandle = (event, holder, options) => {
         const target = event.target;
-        draggableClone = target.cloneNode(true);
-        draggableClone.classList.add('dragging');
-        draggableClone.style.display = "none";
-        (_a = options === null || options === void 0 ? void 0 : options.afterDragstartCallback) === null || _a === void 0 ? void 0 : _a.call(options);
-    });
-    holder.addEventListener('dragend', (event) => {
-        var _a;
-        dragendHandle(event, holder);
-        (_a = options === null || options === void 0 ? void 0 : options.afterDragendCallback) === null || _a === void 0 ? void 0 : _a.call(options);
-    });
-    holder.addEventListener('dragover', (event) => {
-        var _a;
-        dragoverHandle(event, holder, options.cloneToContainerId, draggableClone);
-        draggableClone.classList.remove('dragging');
-        draggableClone.removeAttribute("style");
-        (_a = options === null || options === void 0 ? void 0 : options.afterDragoverCallback) === null || _a === void 0 ? void 0 : _a.call(options);
-    });
-}
-function getDragAfterElement(container, y) {
-    var _a;
-    const draggableElements = Array.from(container.querySelectorAll('[draggable=true]:not(.dragging)'));
-    return (_a = draggableElements.reduce((closest, child) => {
-        const box = child.getBoundingClientRect();
-        const offset = y - box.top - box.height / 2;
-        if (offset < 0 && offset > (closest ? closest.offset : Number.NEGATIVE_INFINITY)) {
-            return { offset: offset, element: child };
+        if (!target || target.getAttribute('draggable') !== 'true') {
+            return;
+        }
+        if (options.type == 'sort' && target.parentElement && target.parentElement.id !== options.sortableContainerId) {
+            return;
+        }
+        target.classList.add('dragging');
+    };
+    const dragendHandle = (event, holder) => {
+        const target = event.target;
+        if (!target || target.getAttribute('draggable') !== 'true') {
+            return;
+        }
+        target.classList.remove('dragging');
+    };
+    const dragoverHandle = (event, holder, options, cloneElement) => {
+        event.preventDefault();
+        const target = event.target;
+        const targetId = options.type == 'sort' ? options.sortableContainerId : options.cloneToContainerId;
+        if (!target || target.id !== targetId || target.contains(holder)) {
+            return;
+        }
+        if (options.type == 'clone' && !options.sortableTargetContainer) {
+            return;
+        }
+        const afterElement = getDragAfterElement(target, event.clientY);
+        const draggable = cloneElement ? cloneElement : holder.querySelector('.dragging');
+        if (!draggable) {
+            return;
+        }
+        if (afterElement == null) {
+            target.appendChild(draggable);
         }
         else {
-            return closest;
+            target.insertBefore(draggable, afterElement);
         }
-    }, null)) === null || _a === void 0 ? void 0 : _a.element;
-}
-function dragstartHandle(event, holder) {
-    const target = event.target;
-    if (!target || target.getAttribute('draggable') !== 'true') {
-        return;
-    }
-    target.classList.add('dragging');
-}
-function dragendHandle(event, holder) {
-    const target = event.target;
-    if (!target || target.getAttribute('draggable') !== 'true') {
-        return;
-    }
-    target.classList.remove('dragging');
-}
-function dragoverHandle(event, holder, containerId, cloneElement) {
-    event.preventDefault();
-    const target = event.target;
-    if (!target || target.id !== containerId || target.contains(holder)) {
-        return;
-    }
-    const afterElement = getDragAfterElement(target, event.clientY);
-    const draggable = cloneElement ? cloneElement : holder.querySelector('.dragging');
-    if (afterElement == null) {
-        target.appendChild(draggable);
-    }
-    else {
-        target.insertBefore(draggable, afterElement);
-    }
+    };
 }
 const sortOptions = {
     wrapperId: "wrapper",
@@ -101,7 +149,6 @@ const cloneOptions = {
     type: "clone",
     cloneFromContainerId: "fromContainer",
     cloneToContainerId: "container",
-    sortableTargetContainer: true,
+    sortableTargetContainer: false
 };
-// initDragAndSort(sortOptions);
-// initDragAndClone(cloneOptions);
+initDragAndDrop(cloneOptions);
