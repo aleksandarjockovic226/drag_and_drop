@@ -132,15 +132,3 @@ function initDragAndDrop(options) {
         }
     };
 }
-const sortOptions = {
-    wrapperId: "wrapper",
-    type: "sort",
-    sortableContainerId: "container",
-};
-const cloneOptions = {
-    wrapperId: "wrapper",
-    type: "clone",
-    cloneFromContainerId: "fromContainer",
-    cloneToContainerId: "container",
-};
-initDragAndDrop(cloneOptions);

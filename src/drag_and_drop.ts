@@ -174,18 +174,3 @@ function initDragAndDrop(options: DragAndSort | DragAndClone) {
         }
     }
 }
-
-const sortOptions: DragAndSort = {
-    wrapperId: "wrapper",
-    type: "sort",
-    sortableContainerId: "container",
-};
-
-const cloneOptions: DragAndClone = {
-    wrapperId: "wrapper",
-    type: "clone",
-    cloneFromContainerId: "fromContainer",
-    cloneToContainerId: "container",
-};
-
-initDragAndDrop(cloneOptions);

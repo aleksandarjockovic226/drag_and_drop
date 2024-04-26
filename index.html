@@ -26,6 +26,23 @@
     </div>
 
     <script src="/dist/drag_and_drop.js"></script>
+
+    <script>
+        const sortOptions = {
+            wrapperId: "wrapper",
+            type: "sort",
+            sortableContainerId: "container",
+        };
+
+        const cloneOptions = {
+            wrapperId: "wrapper",
+            type: "clone",
+            cloneFromContainerId: "fromContainer",
+            cloneToContainerId: "container",
+        };
+
+        initDragAndDrop(sortOptions);
+    </script>
 </body>
 
 </html>
