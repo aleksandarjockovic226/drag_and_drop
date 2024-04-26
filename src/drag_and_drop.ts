@@ -1,24 +1,23 @@
-interface InitDragAndDrop {
+interface DragAndDrop {
     wrapperId: string;
     type: "sort" | "clone";
-    afterDragstartCallback?: () => void;
-    afterDragendCallback?: () => void;
-    afterDragoverCallback?: () => void;
+    afterDragstartCallback?: (target: HTMLElement, holder: HTMLElement, clone?: HTMLElement | undefined) => void;
+    afterDragendCallback?: (target: HTMLElement, holder: HTMLElement, clone?: HTMLElement | undefined) => void;
+    afterDragoverCallback?: (target: HTMLElement, holder: HTMLElement, clone?: HTMLElement | undefined) => void;
 }
 
-interface InitDragAndSort extends InitDragAndDrop {
+interface DragAndSort extends DragAndDrop {
     type: "sort";
     sortableContainerId: string;
 }
 
-interface InitDragAndClone extends InitDragAndDrop {
+interface DragAndClone extends DragAndDrop {
     type: "clone";
     cloneFromContainerId: string,
     cloneToContainerId: string,
-    sortableTargetContainer?: true | false
 }
 
-function initDragAndDrop(options: InitDragAndSort | InitDragAndClone) {
+function initDragAndDrop(options: DragAndSort | DragAndClone) {
     if (!options.type) {
         throw new Error("Drag And Drop: property 'type' not specified!");
     }
@@ -27,7 +26,7 @@ function initDragAndDrop(options: InitDragAndSort | InitDragAndClone) {
         throw new Error("Drag And Drop: property 'wrapperId' not specified!");
     }
 
-    const initDragAndSort = (options: InitDragAndSort) => {
+    const initDragAndSort = (options: DragAndSort) => {
         const holder: HTMLElement = document.querySelector(`#${options.wrapperId}`) as HTMLElement;
 
         if (!holder) {
@@ -36,26 +35,26 @@ function initDragAndDrop(options: InitDragAndSort | InitDragAndClone) {
 
         holder.addEventListener('dragstart', (event) => {
             dragstartHandle(event, holder, options);
-            options?.afterDragstartCallback?.();
+            options?.afterDragstartCallback?.(event.target as HTMLElement, holder as HTMLElement);
         });
         holder.addEventListener('dragend', (event) => {
             dragendHandle(event, holder);
-            options?.afterDragendCallback?.();
+            options?.afterDragendCallback?.(event.target as HTMLElement, holder as HTMLElement);
         });
         holder.addEventListener('dragover', (event) => {
             dragoverHandle(event, holder, options);
-            options?.afterDragoverCallback?.();
+            options?.afterDragoverCallback?.(event.target as HTMLElement, holder as HTMLElement);
         });
     }
 
-    const initDragAndClone = (options: InitDragAndClone) => {
+    const initDragAndClone = (options: DragAndClone) => {
         const holder: HTMLElement = document.querySelector(`#${options.wrapperId}`) as HTMLElement;
 
         if (!holder) {
             throw new Error(`Drag And Drop: Element with id '${options.wrapperId}' was not found when initializing 'Drag And Clone'!`);
         }
 
-        let draggableClone: HTMLElement;
+        let draggableClone: HTMLElement | undefined;
 
         holder.addEventListener('dragstart', (event) => {
             const target = event.target as HTMLElement;
@@ -64,36 +63,33 @@ function initDragAndDrop(options: InitDragAndSort | InitDragAndClone) {
 
             if (target.parentElement && target.parentElement.id == options.cloneFromContainerId) {
                 draggableClone = target.cloneNode(true) as HTMLElement;
-                
-                // TODO: sortableTargetContainer: false, fix for cloned elements!
-
                 draggableClone.classList.add('dragging');
                 draggableClone.style.display = "none";
-
             }
-            options?.afterDragstartCallback?.();
+
+            options?.afterDragstartCallback?.(event.target as HTMLElement, holder as HTMLElement, draggableClone);
         });
         holder.addEventListener('dragend', (event) => {
             dragendHandle(event, holder);
-            options?.afterDragendCallback?.();
+
+            options?.afterDragendCallback?.(event.target as HTMLElement, holder as HTMLElement, draggableClone);
+            draggableClone = undefined;
         });
         holder.addEventListener('dragover', (event) => {
-            if (!draggableClone) {
-                return
+            draggableClone ? dragoverHandle(event, holder, options, draggableClone) : dragoverHandle(event, holder, options);
+
+            if (draggableClone) {
+                draggableClone.classList.remove('dragging');
+                draggableClone.removeAttribute("style");
             }
 
-            dragoverHandle(event, holder, options, draggableClone);
-
-            draggableClone.classList.remove('dragging');
-            draggableClone.removeAttribute("style");
-
-            options?.afterDragoverCallback?.();
+            options?.afterDragoverCallback?.(event.target as HTMLElement, holder as HTMLElement, draggableClone);
         });
     }
 
     switch (options.type.toLocaleLowerCase()) {
         case "sort":
-            options = options as InitDragAndSort;
+            options = options as DragAndSort;
 
             if (!options.sortableContainerId) {
                 throw new Error("Drag And Drop: property 'sortableContainerId' not specified!");
@@ -102,7 +98,7 @@ function initDragAndDrop(options: InitDragAndSort | InitDragAndClone) {
             initDragAndSort(options);
             break;
         case "clone":
-            options = options as InitDragAndClone;
+            options = options as DragAndClone;
 
             if (!options.cloneFromContainerId) {
                 throw new Error("Drag And Drop: property 'cloneFromContainerId' not specified!");
@@ -110,10 +106,6 @@ function initDragAndDrop(options: InitDragAndSort | InitDragAndClone) {
 
             if (!options.cloneToContainerId) {
                 throw new Error("Drag And Drop: property 'cloneToContainerId' not specified!");
-            }
-
-            if (!options.sortableTargetContainer) {
-                options.sortableTargetContainer = true;
             }
 
             initDragAndClone(options);
@@ -137,7 +129,7 @@ function initDragAndDrop(options: InitDragAndSort | InitDragAndClone) {
         }, null)?.element;
     }
 
-    const dragstartHandle = (event: DragEvent, holder: HTMLElement, options: InitDragAndSort | InitDragAndClone) => {
+    const dragstartHandle = (event: DragEvent, holder: HTMLElement, options: DragAndSort | DragAndClone) => {
         const target = event.target as HTMLElement;
         if (!target || target.getAttribute('draggable') !== 'true') {
             return;
@@ -159,16 +151,12 @@ function initDragAndDrop(options: InitDragAndSort | InitDragAndClone) {
         target.classList.remove('dragging');
     }
 
-    const dragoverHandle = (event: DragEvent, holder: HTMLElement, options: InitDragAndSort | InitDragAndClone, cloneElement?: HTMLElement) => {
+    const dragoverHandle = (event: DragEvent, holder: HTMLElement, options: DragAndSort | DragAndClone, cloneElement?: HTMLElement) => {
         event.preventDefault();
         const target = event.target as HTMLElement;
         const targetId = options.type == 'sort' ? options.sortableContainerId : options.cloneToContainerId;
 
         if (!target || target.id !== targetId || target.contains(holder)) {
-            return;
-        }
-
-        if (options.type == 'clone' && !options.sortableTargetContainer) {
             return;
         }
 
@@ -187,18 +175,17 @@ function initDragAndDrop(options: InitDragAndSort | InitDragAndClone) {
     }
 }
 
-const sortOptions: InitDragAndSort = {
+const sortOptions: DragAndSort = {
     wrapperId: "wrapper",
     type: "sort",
     sortableContainerId: "container",
 };
 
-const cloneOptions: InitDragAndClone = {
+const cloneOptions: DragAndClone = {
     wrapperId: "wrapper",
     type: "clone",
     cloneFromContainerId: "fromContainer",
     cloneToContainerId: "container",
-    sortableTargetContainer: false
 };
 
 initDragAndDrop(cloneOptions);

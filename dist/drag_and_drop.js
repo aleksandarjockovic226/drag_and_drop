@@ -14,17 +14,17 @@ function initDragAndDrop(options) {
         holder.addEventListener('dragstart', (event) => {
             var _a;
             dragstartHandle(event, holder, options);
-            (_a = options === null || options === void 0 ? void 0 : options.afterDragstartCallback) === null || _a === void 0 ? void 0 : _a.call(options);
+            (_a = options === null || options === void 0 ? void 0 : options.afterDragstartCallback) === null || _a === void 0 ? void 0 : _a.call(options, event.target, holder);
         });
         holder.addEventListener('dragend', (event) => {
             var _a;
             dragendHandle(event, holder);
-            (_a = options === null || options === void 0 ? void 0 : options.afterDragendCallback) === null || _a === void 0 ? void 0 : _a.call(options);
+            (_a = options === null || options === void 0 ? void 0 : options.afterDragendCallback) === null || _a === void 0 ? void 0 : _a.call(options, event.target, holder);
         });
         holder.addEventListener('dragover', (event) => {
             var _a;
             dragoverHandle(event, holder, options);
-            (_a = options === null || options === void 0 ? void 0 : options.afterDragoverCallback) === null || _a === void 0 ? void 0 : _a.call(options);
+            (_a = options === null || options === void 0 ? void 0 : options.afterDragoverCallback) === null || _a === void 0 ? void 0 : _a.call(options, event.target, holder);
         });
     };
     const initDragAndClone = (options) => {
@@ -39,26 +39,25 @@ function initDragAndDrop(options) {
             dragstartHandle(event, holder, options);
             if (target.parentElement && target.parentElement.id == options.cloneFromContainerId) {
                 draggableClone = target.cloneNode(true);
-                // TODO: sortableTargetContainer: false, fix for cloned elements!
                 draggableClone.classList.add('dragging');
                 draggableClone.style.display = "none";
             }
-            (_a = options === null || options === void 0 ? void 0 : options.afterDragstartCallback) === null || _a === void 0 ? void 0 : _a.call(options);
+            (_a = options === null || options === void 0 ? void 0 : options.afterDragstartCallback) === null || _a === void 0 ? void 0 : _a.call(options, event.target, holder, draggableClone);
         });
         holder.addEventListener('dragend', (event) => {
             var _a;
             dragendHandle(event, holder);
-            (_a = options === null || options === void 0 ? void 0 : options.afterDragendCallback) === null || _a === void 0 ? void 0 : _a.call(options);
+            (_a = options === null || options === void 0 ? void 0 : options.afterDragendCallback) === null || _a === void 0 ? void 0 : _a.call(options, event.target, holder, draggableClone);
+            draggableClone = undefined;
         });
         holder.addEventListener('dragover', (event) => {
             var _a;
-            if (!draggableClone) {
-                return;
+            draggableClone ? dragoverHandle(event, holder, options, draggableClone) : dragoverHandle(event, holder, options);
+            if (draggableClone) {
+                draggableClone.classList.remove('dragging');
+                draggableClone.removeAttribute("style");
             }
-            dragoverHandle(event, holder, options, draggableClone);
-            draggableClone.classList.remove('dragging');
-            draggableClone.removeAttribute("style");
-            (_a = options === null || options === void 0 ? void 0 : options.afterDragoverCallback) === null || _a === void 0 ? void 0 : _a.call(options);
+            (_a = options === null || options === void 0 ? void 0 : options.afterDragoverCallback) === null || _a === void 0 ? void 0 : _a.call(options, event.target, holder, draggableClone);
         });
     };
     switch (options.type.toLocaleLowerCase()) {
@@ -76,9 +75,6 @@ function initDragAndDrop(options) {
             }
             if (!options.cloneToContainerId) {
                 throw new Error("Drag And Drop: property 'cloneToContainerId' not specified!");
-            }
-            if (!options.sortableTargetContainer) {
-                options.sortableTargetContainer = true;
             }
             initDragAndClone(options);
             break;
@@ -123,9 +119,6 @@ function initDragAndDrop(options) {
         if (!target || target.id !== targetId || target.contains(holder)) {
             return;
         }
-        if (options.type == 'clone' && !options.sortableTargetContainer) {
-            return;
-        }
         const afterElement = getDragAfterElement(target, event.clientY);
         const draggable = cloneElement ? cloneElement : holder.querySelector('.dragging');
         if (!draggable) {
@@ -149,6 +142,5 @@ const cloneOptions = {
     type: "clone",
     cloneFromContainerId: "fromContainer",
     cloneToContainerId: "container",
-    sortableTargetContainer: false
 };
 initDragAndDrop(cloneOptions);
